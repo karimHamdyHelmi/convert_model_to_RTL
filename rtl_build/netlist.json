@@ -1,0 +1,139 @@
+[
+  {
+    "name": "fx_flatten",
+    "op_type": "RTL_FLATTEN",
+    "inputs": [
+      "in0"
+    ],
+    "outputs": [
+      "n0_out"
+    ],
+    "in_shape": [
+      1,
+      1,
+      28,
+      28
+    ],
+    "out_shape": [
+      1,
+      784
+    ],
+    "params": {}
+  },
+  {
+    "name": "fc1",
+    "op_type": "RTL_FC",
+    "inputs": [
+      "n0_out"
+    ],
+    "outputs": [
+      "n1_out"
+    ],
+    "in_shape": [
+      1,
+      784
+    ],
+    "out_shape": [
+      1,
+      16
+    ],
+    "params": {
+      "weight_mem": "params/fc1_weights.mem",
+      "bias_mem": "params/fc1_biases.mem",
+      "in_features": 784,
+      "out_features": 16,
+      "scale": 256,
+      "transpose_weights": false
+    }
+  },
+  {
+    "name": "fx_relu",
+    "op_type": "RTL_RELU",
+    "inputs": [
+      "n1_out"
+    ],
+    "outputs": [
+      "n2_out"
+    ],
+    "in_shape": [
+      1,
+      16
+    ],
+    "out_shape": [
+      1,
+      16
+    ],
+    "params": {}
+  },
+  {
+    "name": "fc2",
+    "op_type": "RTL_FC",
+    "inputs": [
+      "n2_out"
+    ],
+    "outputs": [
+      "n3_out"
+    ],
+    "in_shape": [
+      1,
+      16
+    ],
+    "out_shape": [
+      1,
+      16
+    ],
+    "params": {
+      "weight_mem": "params/fc2_weights.mem",
+      "bias_mem": "params/fc2_biases.mem",
+      "in_features": 16,
+      "out_features": 16,
+      "scale": 256,
+      "transpose_weights": false
+    }
+  },
+  {
+    "name": "fx_relu_1",
+    "op_type": "RTL_RELU",
+    "inputs": [
+      "n3_out"
+    ],
+    "outputs": [
+      "n4_out"
+    ],
+    "in_shape": [
+      1,
+      16
+    ],
+    "out_shape": [
+      1,
+      16
+    ],
+    "params": {}
+  },
+  {
+    "name": "fc3",
+    "op_type": "RTL_FC",
+    "inputs": [
+      "n4_out"
+    ],
+    "outputs": [
+      "n5_out"
+    ],
+    "in_shape": [
+      1,
+      16
+    ],
+    "out_shape": [
+      1,
+      10
+    ],
+    "params": {
+      "weight_mem": "params/fc3_weights.mem",
+      "bias_mem": "params/fc3_biases.mem",
+      "in_features": 16,
+      "out_features": 10,
+      "scale": 256,
+      "transpose_weights": false
+    }
+  }
+]

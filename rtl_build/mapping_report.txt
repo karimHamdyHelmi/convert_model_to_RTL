@@ -1,0 +1,20 @@
+RTL Mapping Report
+==================
+
+Mode: eager+fx (QuantizedMNISTNet.py:SmallMNISTNet)
+Input shape: [1, 1, 28, 28]
+Scale factor: 256
+Transpose FC weights: False
+
+Layer coverage:
+- flatten: 1
+- linear: 3
+- relu: 2
+
+Ordered mapping:
+00. fx_flatten  RTL_FLATTEN  in=[1, 1, 28, 28] -> out=[1, 784]  params=[]
+01. fc1  RTL_FC  in=[1, 784] -> out=[1, 16]  params=['weight_mem', 'bias_mem', 'in_features', 'out_features', 'scale', 'transpose_weights']
+02. fx_relu  RTL_RELU  in=[1, 16] -> out=[1, 16]  params=[]
+03. fc2  RTL_FC  in=[1, 16] -> out=[1, 16]  params=['weight_mem', 'bias_mem', 'in_features', 'out_features', 'scale', 'transpose_weights']
+04. fx_relu_1  RTL_RELU  in=[1, 16] -> out=[1, 16]  params=[]
+05. fc3  RTL_FC  in=[1, 16] -> out=[1, 10]  params=['weight_mem', 'bias_mem', 'in_features', 'out_features', 'scale', 'transpose_weights']
