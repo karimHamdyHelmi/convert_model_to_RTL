@@ -18,7 +18,8 @@ module fc_in #(
    parameter int INPUT_SIZE   = 16,   // Number of valid inputs per FC operation
    parameter int DATA_WIDTH   = 8,    // Bit width of input data
    parameter int WEIGHT_WIDTH = 8,    // Bit width of weights
-   parameter int ACC_WIDTH    = 32    // Bit width of accumulator/output
+   parameter int ACC_WIDTH    = 32,    // Bit width of accumulator/output
+   parameter int FRAC_BITS    = 8     // Fractional bits for fixed-point scaling
 )(
    input  logic                           clk,                // System clock
    input  logic                           rst_n,              // Active-low synchronous reset
@@ -112,7 +113,7 @@ module fc_in #(
             if (!rst_n)
                fc_out[i] <= '0;                      // Clear output on reset
             else if (out_valid)
-               fc_out[i] <= mac_acc[i] + bias[i];    // Add bias to MAC result
+               fc_out[i] <= (mac_acc[i] >>> FRAC_BITS) + bias[i];    // Shift MAC result, then add bias
          end
       end
    endgenerate

@@ -1,20 +1,55 @@
 RTL Mapping Report
-==================
+================================================================================
 
-Mode: eager+fx (QuantizedMNISTNet.py:SmallMNISTNet)
-Input shape: [1, 1, 28, 28]
-Scale factor: 256
-Transpose FC weights: False
+Model: SmallMNISTNet
+Scale Factor: 256
+Data Width: 16
+Weight Width: 16
+Accumulator Width: 32
+Fractional Bits: 8
 
-Layer coverage:
-- flatten: 1
-- linear: 3
-- relu: 2
+Layer Mapping:
+--------------------------------------------------------------------------------
+ 1. flatten_1            flatten    (pass-through in streaming)
 
-Ordered mapping:
-00. fx_flatten  RTL_FLATTEN  in=[1, 1, 28, 28] -> out=[1, 784]  params=[]
-01. fc1  RTL_FC  in=[1, 784] -> out=[1, 16]  params=['weight_mem', 'bias_mem', 'in_features', 'out_features', 'scale', 'transpose_weights']
-02. fx_relu  RTL_RELU  in=[1, 16] -> out=[1, 16]  params=[]
-03. fc2  RTL_FC  in=[1, 16] -> out=[1, 16]  params=['weight_mem', 'bias_mem', 'in_features', 'out_features', 'scale', 'transpose_weights']
-04. fx_relu_1  RTL_RELU  in=[1, 16] -> out=[1, 16]  params=[]
-05. fc3  RTL_FC  in=[1, 16] -> out=[1, 10]  params=['weight_mem', 'bias_mem', 'in_features', 'out_features', 'scale', 'transpose_weights']
+ 2. fc1                  linear     in_features= 784 out_features=  16
+     Weights: SIM/fc1_weights_packed.mem
+     Biases:  SIM/fc1_biases.mem
+
+ 3. relu_1               relu       (element-wise)
+
+ 4. fc2                  linear     in_features=  16 out_features=  16
+     Weights: SIM/fc2_weights_packed.mem
+     Biases:  SIM/fc2_biases.mem
+
+ 5. relu_2               relu       (element-wise)
+
+ 6. fc3                  linear     in_features=  16 out_features=  10
+     Weights: SIM/fc3_weights_packed.mem
+     Biases:  SIM/fc3_biases.mem
+
+Generated Files:
+--------------------------------------------------------------------------------
+RTL Modules:
+  - rtl/mac.sv
+  - rtl/fc_in.sv (modified with FRAC_BITS)
+  - rtl/relu_layer.sv
+  - rtl/sat32_to_16.sv
+  - rtl/fc_layer_fc1.sv
+  - rtl/weight_rom_fc1.sv
+  - rtl/bias_rom_fc1.sv
+  - rtl/fc_layer_fc2.sv
+  - rtl/weight_rom_fc2.sv
+  - rtl/bias_rom_fc2.sv
+  - rtl/fc_layer_fc3.sv
+  - rtl/weight_rom_fc3.sv
+  - rtl/bias_rom_fc3.sv
+  - rtl/SmallMNISTNet_top.sv
+
+Memory Files:
+  - SIM/fc1_weights_packed.mem
+  - SIM/fc1_biases.mem
+  - SIM/fc2_weights_packed.mem
+  - SIM/fc2_biases.mem
+  - SIM/fc3_weights_packed.mem
+  - SIM/fc3_biases.mem

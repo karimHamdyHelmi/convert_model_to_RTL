@@ -1,2 +1,1 @@
-# convert_model_to_RTL
-
+python rtl_mapper.py --model-module QuantizedMNISTNet.py --model-class SmallMNISTNet  --checkpoint mnist_model.pth --out-dir ./rtl_build --scale 256
