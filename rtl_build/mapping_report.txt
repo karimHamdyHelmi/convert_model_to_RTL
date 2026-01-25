@@ -4,7 +4,7 @@ RTL Mapping Report
 Model: SmallMNISTNet
 Scale Factor: 256
 Data Width: 16
-Weight Width: 16
+Weight Width: 8
 Accumulator Width: 32
 Fractional Bits: 8
 

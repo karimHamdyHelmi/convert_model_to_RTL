@@ -4,13 +4,13 @@
 // Module: weight_rom_fc1
 // Description: Weight ROM for fc1 layer
 //   - Depth: 12544 (one weight per line in .mem file)
-//   - Packed output: 256 bits (all neurons for one input feature)
+//   - Packed output: 128 bits (all neurons for one input feature)
 //------------------------------------------------------------------------------
 module weight_rom_fc1 #(
     parameter int ADDR_WIDTH = $clog2(784),
-    parameter int DATA_WIDTH = 256,
+    parameter int DATA_WIDTH = 128,
     parameter int NUM_NEURONS = 16,
-    parameter int WEIGHT_WIDTH = 16
+    parameter int WEIGHT_WIDTH = 8
 )(
     input  logic [ADDR_WIDTH-1:0] addr,
     output logic [DATA_WIDTH-1:0] data

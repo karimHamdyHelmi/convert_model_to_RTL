@@ -28,6 +28,24 @@ def float_to_int16(val: np.ndarray, scale: int = 256) -> np.ndarray:
     return np.clip(np.round(val.astype(np.float32) * float(scale)), -32768, 32767).astype(np.int16)
 
 
+def float_to_int(val: np.ndarray, scale: int, bit_width: int) -> np.ndarray:
+    """Quantize float array to signed integer with specified bit width."""
+    if bit_width == 4:
+        min_val, max_val = -8, 7
+        dtype = np.int8  # Use int8 to store, but values are in [-8, 7]
+    elif bit_width == 8:
+        min_val, max_val = -128, 127
+        dtype = np.int8
+    elif bit_width == 16:
+        min_val, max_val = -32768, 32767
+        dtype = np.int16
+    else:
+        raise ValueError(f"Unsupported bit width: {bit_width}. Supported: 4, 8, 16")
+    
+    quantized = np.clip(np.round(val.astype(np.float32) * float(scale)), min_val, max_val)
+    return quantized.astype(dtype)
+
+
 def quantize_tensor(t: torch.Tensor, scale: int = 256) -> torch.Tensor:
     """Project tensor to fixed-point grid: clamp(round(x * scale), -32768, 32767) / scale."""
     return torch.clamp((t * scale).round(), -32768, 32767) / float(scale)
@@ -222,16 +240,38 @@ def extract_layers(model: nn.Module, example_input: torch.Tensor) -> List[LayerI
 # Memory File Generation
 # ============================================================================
 
-def write_mem_file(path: Path, arr: np.ndarray) -> None:
+def write_mem_file(path: Path, arr: np.ndarray, bit_width: int = 16) -> None:
     """
-    Write int16 array to .mem file as hex (4 hex digits per value).
-    Format: int(val) & 0xFFFF, one value per line.
+    Write integer array to .mem file as hex.
+    Format depends on bit_width:
+    - int4: 1 hex digit (0x0-0xF)
+    - int8: 2 hex digits (0x00-0xFF)
+    - int16: 4 hex digits (0x0000-0xFFFF)
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     flat = arr.reshape(-1)
+    
+    # Determine mask and hex width based on bit_width
+    if bit_width == 4:
+        mask = 0xF
+        hex_width = 1
+        fmt = f"{{:0{hex_width}x}}"
+    elif bit_width == 8:
+        mask = 0xFF
+        hex_width = 2
+        fmt = f"{{:0{hex_width}x}}"
+    elif bit_width == 16:
+        mask = 0xFFFF
+        hex_width = 4
+        fmt = f"{{:0{hex_width}x}}"
+    else:
+        raise ValueError(f"Unsupported bit width: {bit_width}. Supported: 4, 8, 16")
+    
     with path.open("w", encoding="utf-8") as f:
         for val in flat:
-            f.write(f"{int(val) & 0xFFFF:04x}\n")
+            # Convert to signed integer, then mask to get two's complement representation
+            int_val = int(val) & mask
+            f.write(f"{fmt.format(int_val)}\n")
 
 
 def generate_weight_mem(
@@ -247,7 +287,7 @@ def generate_weight_mem(
     Layout: For each input feature j (0..in_features-1), pack all neuron weights:
     row_j = { W[out_features-1, j], W[out_features-2, j], ..., W[0, j] }
     
-    Each weight is WEIGHT_WIDTH=16 bits.
+    Each weight is WEIGHT_WIDTH bits (4, 8, or 16).
     File format: Write weights sequentially (one per line) in the order needed for packing.
     The ROM will read them and pack into a wide word.
     """
@@ -255,17 +295,35 @@ def generate_weight_mem(
     # For each input feature j, we need all neuron weights W[:, j]
     # Write them in reverse order (out_features-1 down to 0) for each j
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Determine mask and hex width based on weight_width
+    if weight_width == 4:
+        mask = 0xF
+        hex_width = 1
+        fmt = f"{{:0{hex_width}x}}"
+    elif weight_width == 8:
+        mask = 0xFF
+        hex_width = 2
+        fmt = f"{{:0{hex_width}x}}"
+    elif weight_width == 16:
+        mask = 0xFFFF
+        hex_width = 4
+        fmt = f"{{:0{hex_width}x}}"
+    else:
+        raise ValueError(f"Unsupported weight width: {weight_width}. Supported: 4, 8, 16")
+    
     with out_path.open("w", encoding="utf-8") as f:
         for j in range(in_features):
             # Write weights for input feature j in reverse neuron order
             for neuron_idx in range(out_features - 1, -1, -1):
-                weight_val = int(weight_matrix[neuron_idx, j]) & 0xFFFF
-                f.write(f"{weight_val:04x}\n")
+                # Convert to signed integer, then mask to get two's complement representation
+                weight_val = int(weight_matrix[neuron_idx, j]) & mask
+                f.write(f"{fmt.format(weight_val)}\n")
 
 
-def generate_bias_mem(bias_vector: np.ndarray, out_path: Path) -> None:
+def generate_bias_mem(bias_vector: np.ndarray, out_path: Path, bit_width: int = 16) -> None:
     """Generate bias .mem file (one bias per line)."""
-    write_mem_file(out_path, bias_vector)
+    write_mem_file(out_path, bias_vector, bit_width)
 
 
 # ============================================================================
@@ -1083,6 +1141,13 @@ def main() -> int:
         help="Weight width in bits (default: 16)"
     )
     parser.add_argument(
+        "--weight-format",
+        type=str,
+        choices=["int4", "int8", "int16"],
+        default=None,
+        help="Weight format for .mem files: int4, int8, or int16 hex (default: determined from --weight-width)"
+    )
+    parser.add_argument(
         "--acc-width",
         type=int,
         default=32,
@@ -1107,6 +1172,32 @@ def main() -> int:
         raise ValueError("--scale must be positive")
     if args.data_width <= 0 or args.weight_width <= 0 or args.acc_width <= 0:
         raise ValueError("Width parameters must be positive")
+    
+    # Determine weight format from --weight-format or --weight-width
+    if args.weight_format:
+        if args.weight_format == "int4":
+            weight_format_bits = 4
+        elif args.weight_format == "int8":
+            weight_format_bits = 8
+        elif args.weight_format == "int16":
+            weight_format_bits = 16
+        # If weight_format is explicitly set, use it for RTL weight_width as well
+        # This ensures RTL matches the .mem file format
+        if weight_format_bits != args.weight_width:
+            LOGGER.info(f"Setting weight_width to {weight_format_bits} to match --weight-format={args.weight_format}")
+            args.weight_width = weight_format_bits
+    else:
+        # Auto-detect from weight_width
+        if args.weight_width == 4:
+            weight_format_bits = 4
+        elif args.weight_width == 8:
+            weight_format_bits = 8
+        elif args.weight_width == 16:
+            weight_format_bits = 16
+        else:
+            # Default to 16 if weight_width doesn't match standard formats
+            weight_format_bits = 16
+            LOGGER.warning(f"weight_width={args.weight_width} doesn't match standard formats (4, 8, 16). Using int16 format.")
     
     frac_bits = 8  # FRAC_BITS = 8 for SCALE_FACTOR = 256
     
@@ -1152,24 +1243,25 @@ def main() -> int:
     model_name = args.model_class
     
     # Process layers: quantize and generate files
-    LOGGER.info("Quantizing weights and biases...")
+    LOGGER.info(f"Quantizing weights and biases (format: int{weight_format_bits})...")
     for layer in layers:
         if layer.layer_type == "linear":
             # Quantize weights and biases
             weight_np = layer.weight.detach().cpu().numpy().astype(np.float32)
             bias_np = layer.bias.detach().cpu().numpy().astype(np.float32) if layer.bias is not None else np.zeros((weight_np.shape[0],), dtype=np.float32)
             
-            weight_i16 = float_to_int16(weight_np, args.scale)
-            bias_i16 = float_to_int16(bias_np, args.scale)
+            # Use the new quantization function with the specified bit width
+            weight_quantized = float_to_int(weight_np, args.scale, weight_format_bits)
+            bias_quantized = float_to_int(bias_np, args.scale, weight_format_bits)
             
             # Generate .mem files
             weight_mem_path = sim_dir / f"{layer.name}_weights_packed.mem"
             bias_mem_path = sim_dir / f"{layer.name}_biases.mem"
             
-            generate_weight_mem(weight_i16, weight_mem_path, layer.in_features, layer.out_features, args.weight_width)
-            generate_bias_mem(bias_i16, bias_mem_path)
+            generate_weight_mem(weight_quantized, weight_mem_path, layer.in_features, layer.out_features, weight_format_bits)
+            generate_bias_mem(bias_quantized, bias_mem_path, weight_format_bits)
             
-            LOGGER.info(f"  {layer.name}: {layer.in_features} -> {layer.out_features}")
+            LOGGER.info(f"  {layer.name}: {layer.in_features} -> {layer.out_features} (int{weight_format_bits} hex format)")
     
     # Copy RTL templates
     LOGGER.info("Copying RTL templates...")

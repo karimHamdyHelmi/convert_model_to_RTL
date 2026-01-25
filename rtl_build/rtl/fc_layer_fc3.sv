@@ -8,7 +8,7 @@ module fc_layer_fc3 #(
     parameter int NUM_NEURONS   = 10,
     parameter int INPUT_SIZE    = 16,
     parameter int DATA_WIDTH    = 16,
-    parameter int WEIGHT_WIDTH  = 16,
+    parameter int WEIGHT_WIDTH  = 8,
     parameter int ACC_WIDTH     = 32,
     parameter int FRAC_BITS     = 8
 )(

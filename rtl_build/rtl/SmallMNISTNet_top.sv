@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------------
 module SmallMNISTNet_top #(
     parameter int DATA_WIDTH   = 16,
-    parameter int WEIGHT_WIDTH = 16,
+    parameter int WEIGHT_WIDTH = 8,
     parameter int ACC_WIDTH    = 32,
     parameter int FRAC_BITS    = 8
 )(
@@ -76,7 +76,7 @@ module SmallMNISTNet_top #(
         .NUM_NEURONS  (16),
         .INPUT_SIZE   (784),
         .DATA_WIDTH   (16),
-        .WEIGHT_WIDTH (16),
+        .WEIGHT_WIDTH (8),
         .ACC_WIDTH    (32),
         .FRAC_BITS    (8)
     ) u_fc1 (
@@ -160,7 +160,7 @@ module SmallMNISTNet_top #(
         .NUM_NEURONS  (16),
         .INPUT_SIZE   (16),
         .DATA_WIDTH   (16),
-        .WEIGHT_WIDTH (16),
+        .WEIGHT_WIDTH (8),
         .ACC_WIDTH    (32),
         .FRAC_BITS    (8)
     ) u_fc2 (
@@ -244,7 +244,7 @@ module SmallMNISTNet_top #(
         .NUM_NEURONS  (10),
         .INPUT_SIZE   (16),
         .DATA_WIDTH   (16),
-        .WEIGHT_WIDTH (16),
+        .WEIGHT_WIDTH (8),
         .ACC_WIDTH    (32),
         .FRAC_BITS    (8)
     ) u_fc3 (

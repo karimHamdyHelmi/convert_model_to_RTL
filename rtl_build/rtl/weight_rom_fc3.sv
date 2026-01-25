@@ -4,13 +4,13 @@
 // Module: weight_rom_fc3
 // Description: Weight ROM for fc3 layer
 //   - Depth: 160 (one weight per line in .mem file)
-//   - Packed output: 160 bits (all neurons for one input feature)
+//   - Packed output: 80 bits (all neurons for one input feature)
 //------------------------------------------------------------------------------
 module weight_rom_fc3 #(
     parameter int ADDR_WIDTH = $clog2(16),
-    parameter int DATA_WIDTH = 160,
+    parameter int DATA_WIDTH = 80,
     parameter int NUM_NEURONS = 10,
-    parameter int WEIGHT_WIDTH = 16
+    parameter int WEIGHT_WIDTH = 8
 )(
     input  logic [ADDR_WIDTH-1:0] addr,
     output logic [DATA_WIDTH-1:0] data
